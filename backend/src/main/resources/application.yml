@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 80
 
 spring:
   application:
@@ -45,7 +45,7 @@ catalog:
   upload:
     dir: /tmp/catalog-uploads
   server:
-    url: ${BACKEND_PUBLIC_URL:http://localhost:8084}
+    url: ${BACKEND_PUBLIC_URL:http://localhost:80}
 
 # ELIMINADO: eureka.client.*
 # ELIMINADO: spring.data.redis.*

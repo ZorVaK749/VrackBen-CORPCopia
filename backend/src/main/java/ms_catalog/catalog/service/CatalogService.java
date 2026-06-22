@@ -40,7 +40,7 @@ public class CatalogService {
     /**
      * URL base del servidor para construir la URL pública de la imagen.
      */
-    @Value("${catalog.server.url:http://localhost:8084}")
+    @Value("${catalog.server.url:http://localhost:80}")
     private String serverUrl;
 
     public CatalogService(CatalogRepository repository) {

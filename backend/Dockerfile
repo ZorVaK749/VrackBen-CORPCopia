@@ -40,15 +40,15 @@ COPY --from=builder /build/target/*.jar app.jar
 RUN mkdir -p /tmp/catalog-uploads
 
 # Puerto que expone el microservicio (debe coincidir con server.port)
-EXPOSE 8084
+EXPOSE 80
 
 # Health check para ECS — usa el endpoint de Actuator
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:8084/actuator/health || exit 1
+  CMD wget -qO- http://localhost:80/actuator/health || exit 1
 
 # Variables de entorno configurables desde ECS Task Definition
 ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseContainerSupport"
 ENV FRONTEND_ORIGIN="*"
-ENV BACKEND_PUBLIC_URL="http://localhost:8084"
+ENV BACKEND_PUBLIC_URL="http://localhost:80"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
