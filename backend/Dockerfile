@@ -44,7 +44,7 @@ EXPOSE 80
 
 # Health check para ECS — usa el endpoint de Actuator
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:80/actuator/health || exit 1
+  CMD wget -qO- http://127.0.0.1:80/actuator/health || exit 1
 
 # Variables de entorno configurables desde ECS Task Definition
 ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseContainerSupport"
