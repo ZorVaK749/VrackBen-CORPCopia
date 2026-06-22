@@ -34,24 +34,28 @@ Para que los workflows funcionen correctamente, debes configurar los siguientes 
 - `AWS_SESSION_TOKEN`: **Obligatorio** en entornos de AWS Academy.
 - `VITE_API_BACKEND_URL`: La URL pública del Application Load Balancer (ALB) de tu backend en ECS (necesario solo para el build del frontend).
 
-*Nota sobre AWS Academy: Recuerda que las credenciales rotan frecuentemente. Deberás actualizarlas en GitHub antes de cada sesión de despliegue.*
+_Nota sobre AWS Academy: Recuerda que las credenciales rotan frecuentemente. Deberás actualizarlas en GitHub antes de cada sesión de despliegue_
 
 ## Ejecución Local con Docker
 
 Puedes probar ambos servicios localmente antes de desplegarlos:
 
 ### Backend
+
 ```bash
 cd backend
 docker build -t vrakben-backend:lite .
 docker run -p 8084:8084 vrakben-backend:lite
 ```
-*(El backend responderá en http://localhost:8084/api/catalog/all)*
+
+_(El backend responderá en http://localhost:8084/api/catalog/all)_
 
 ### Frontend
+
 ```bash
 cd frontend
 docker build --build-arg VITE_API_BACKEND_URL=http://localhost:8084 -t vrakben-frontend:lite .
 docker run -p 80:80 vrakben-frontend:lite
 ```
-*(El frontend estará disponible en http://localhost)*
+
+_(El frontend estará disponible en http://localhost)_

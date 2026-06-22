@@ -14,9 +14,10 @@ spring:
     password: ""
 
   jpa:
+    defer-datasource-initialization: true
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: create-drop   # Crea las tablas al arrancar, las borra al parar
+      ddl-auto: update   # Actualiza las tablas en lugar de recrearlas, permite que data.sql se ejecute después
     show-sql: false
 
   # data.sql se ejecuta automáticamente al arrancar para cargar datos mock
