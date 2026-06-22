@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: innovatech-backend
   ECS_CLUSTER: cluster-innovatech1
-  ECS_SERVICE: servicio-back
+  ECS_SERVICE: tarea-back-service-kvwylxa6
   CONTAINER_NAME: back-container
 
 jobs:

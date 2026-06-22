@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: innovatech-frontend
   ECS_CLUSTER: cluster-innovatech1
-  ECS_SERVICE: servicio-front
+  ECS_SERVICE: tarea-front-service-m5bwygi7
   CONTAINER_NAME: front-container
 
 jobs:
