@@ -1,0 +1,194 @@
+version: "3.8"
+
+services:
+  # 1. Base de Datos Centralizada
+  vrakben-db:
+    image: postgres:15
+    container_name: vrakben-db
+    environment:
+      POSTGRES_USER: user_vrakben
+      POSTGRES_PASSWORD: password_vrakben
+      POSTGRES_DB: vrakben_db
+    volumes:
+      - vrakben-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - vrakben-net
+
+  # 2. Cache Redis
+  vrakben-redis:
+    image: redis:7-alpine
+    container_name: vrakben-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - vrakben-net
+
+  # 3. Mensajería Asíncrona RabbitMQ
+  vrakben-rabbitmq:
+    image: rabbitmq:3-management
+    container_name: vrakben-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI (user: guest / guest)
+    networks:
+      - vrakben-net
+
+  # 2. Service Discovery (Eureka)
+  eureka-server:
+    build: ./Backend/eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - vrakben-net
+
+  # 3. API Gateway - Puerta de entrada
+  api-gateway:
+    build: ./bff
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 4. Auth Server
+  auth-server:
+    build: ./ms-auth-server
+    container_name: auth-server
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 6. Catálogo de Repuestos (con caché Redis)
+  ms-catalog:
+    build: ./ms-catalog
+    container_name: ms-catalog
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_REDIS_HOST=vrakben-redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      - vrakben-db
+      - eureka-server
+      - vrakben-redis
+    networks:
+      - vrakben-net
+
+  # 6. Motor de Inventario
+  ms-stock-engine:
+    build: ./ms-stock
+    container_name: ms-stock-engine
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 7. Carrito de Compras
+  ms-shopping-cart:
+    build: ./ms-shopping-cart
+    container_name: ms-shopping-cart
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 8. Gestión de Órdenes / Ventas (con mensajería RabbitMQ)
+  ms-order-management:
+    build: ./Backend/order-management
+    container_name: ms-order-management
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_RABBITMQ_HOST=vrakben-rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+    depends_on:
+      - vrakben-db
+      - eureka-server
+      - vrakben-rabbitmq
+    networks:
+      - vrakben-net
+
+  # 9. Agendamiento de Citas
+  ms-appointment-scheduler:
+    build: ./Backend/appointment-scheduler
+    container_name: ms-appointment-scheduler
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 10. Historial de Vehículos
+  ms-vehicle-history:
+    build: ./Backend/vehicle-history
+    container_name: ms-vehicle-history
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 11. Órdenes de Trabajo para Mecánicos
+  ms-job-orders:
+    build: ./Backend/job-orders
+    container_name: ms-job-orders
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+  # 12. Solicitudes de Material
+  ms-supplier-procurement:
+    build: ./Backend/supplier-procurement
+    container_name: ms-supplier-procurement
+    ports:
+      - "8088:8092"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://vrakben-db:5432/vrakben_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - vrakben-db
+      - eureka-server
+    networks:
+      - vrakben-net
+
+networks:
+  vrakben-net:
+    driver: bridge
+
+volumes:
+  vrakben-db-data:

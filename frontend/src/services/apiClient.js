@@ -1,11 +1,9 @@
 // src/services/apiClient.js
 import axios from 'axios';
 
-// URL del backend (ms-catalog Lite en ECS).
-// En desarrollo local: http://localhost:8084
-// En producción (ECS): URL del ALB del backend, pasada como --build-arg VITE_API_BACKEND_URL
+// Instancia de Axios apuntando al BFF (API Gateway)
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BACKEND_URL || 'http://localhost:8084',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },

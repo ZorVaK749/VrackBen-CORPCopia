@@ -1,0 +1,22 @@
+server:
+  port: 8088
+spring:
+  application:
+    name: order-management
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:infra.vrakben.local}:5432/vrakben_db
+    username: user_vrakben
+    password: password_vrakben
+  jpa:
+    hibernate:
+      ddl-auto: update
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_HOST:eureka.vrakben.local}:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

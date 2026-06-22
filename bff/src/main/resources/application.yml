@@ -1,0 +1,87 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: auth-server-route
+          uri: lb://ms-auth-server
+          predicates:
+            - Path=/api/auth/**
+
+        - id: catalog-route
+          uri: lb://catalog
+          predicates:
+            - Path=/api/catalog/**
+          filters:
+            - JwtAuthentication
+
+        - id: stock-engine-route
+          uri: lb://stock-engine
+          predicates:
+            - Path=/api/stock/**
+          filters:
+            - JwtAuthentication=ROLE_ADMIN
+
+        - id: supplier-procurement-route
+          uri: lb://supplier-procurement
+          predicates:
+            - Path=/api/procurement/**
+          filters:
+            - JwtAuthentication=ROLE_ADMIN
+
+        - id: job-orders-route
+          uri: lb://job-orders
+          predicates:
+            - Path=/api/job-orders/**
+          filters:
+            - JwtAuthentication
+
+        - id: shopping-cart-route
+          uri: lb://shopping-cart
+          predicates:
+            - Path=/api/cart/**
+          filters:
+            - JwtAuthentication
+
+        - id: appointment-route
+          uri: lb://appointment-scheduler
+          predicates:
+            - Path=/api/appointments/**
+          filters:
+            - JwtAuthentication
+
+        - id: vehicle-history-route
+          uri: lb://vehicle-history
+          predicates:
+            - Path=/api/history/**
+          filters:
+            - JwtAuthentication
+
+        - id: order-management-route
+          uri: lb://order-management
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - JwtAuthentication
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_HOST:eureka.vrakben.local}:8761/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
