@@ -6,13 +6,14 @@ on:
       - main
     paths:
       - 'frontend/**'
-  workflow_dispatch: # Permite ejecución manual
+  workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1                   # TODO: Reemplaza con tu región
-  ECR_REPOSITORY: vrakben-frontend-lite   # TODO: Reemplaza con tu repo de ECR
-  ECS_CLUSTER: vrakben-cluster            # TODO: Reemplaza con tu clúster ECS
-  ECS_SERVICE: vrakben-frontend-service   # TODO: Reemplaza con tu servicio ECS
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: innovatech-frontend
+  ECS_CLUSTER: cluster-innovatech
+  ECS_SERVICE: servicio-front
+  CONTAINER_NAME: front-container
 
 jobs:
   deploy:
@@ -28,7 +29,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Obligatorio en AWS Academy
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
@@ -40,22 +41,25 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
-        # Se requiere este secret configurado en el repo de GitHub:
         VITE_API_BACKEND_URL: ${{ secrets.VITE_API_BACKEND_URL }}
       working-directory: ./frontend
       run: |
-        # Build pasándole la URL del backend al frontend de Vite
         docker build --build-arg VITE_API_BACKEND_URL=$VITE_API_BACKEND_URL -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        
-        # Etiquetar también como 'latest' para facilitar el reinicio en ECS
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
-        # Subir ambas etiquetas
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Force new ECS deployment
-      # En AWS Academy no siempre tienes permisos para crear nuevas versiones de Task Definitions.
-      # Actualizar el servicio para que jale la nueva imagen 'latest' es la forma más segura.
-      run: |
-        aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition-front.json
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true

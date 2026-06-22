@@ -6,13 +6,14 @@ on:
       - main
     paths:
       - 'backend/**'
-  workflow_dispatch: # Permite ejecución manual
+  workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1                   # TODO: Reemplaza con tu región
-  ECR_REPOSITORY: vrakben-backend-lite    # TODO: Reemplaza con tu repo de ECR
-  ECS_CLUSTER: vrakben-cluster            # TODO: Reemplaza con tu clúster ECS
-  ECS_SERVICE: vrakben-backend-service    # TODO: Reemplaza con tu servicio ECS
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: innovatech-backend
+  ECS_CLUSTER: cluster-innovatech
+  ECS_SERVICE: servicio-back
+  CONTAINER_NAME: back-container
 
 jobs:
   deploy:
@@ -23,20 +24,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Cache opcional para Maven (acelera el build de Stage 1 del Dockerfile)
-    - name: Cache Maven packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Obligatorio en AWS Academy
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
@@ -51,13 +44,21 @@ jobs:
       working-directory: ./backend
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Force new ECS deployment
-      # En AWS Academy a veces hay restricciones de IAM (iam:PassRole).
-      # Este enfoque fuerza a ECS a descargar 'latest' y reiniciar las tareas.
-      run: |
-        aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition-back.json
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.build-image.outputs.image }}
+
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
