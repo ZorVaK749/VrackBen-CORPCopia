@@ -16,11 +16,8 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
 
-        // Permite el frontend en desarrollo local
-        corsConfig.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173"
-        ));
+        // Permite cualquier frontend (Load Balancer, localhost, etc.)
+        corsConfig.setAllowedOriginPatterns(List.of("*"));
 
         // Métodos HTTP permitidos
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
