@@ -1,0 +1,55 @@
+name: Test AWS Fargate Permissions
+
+on:
+  workflow_dispatch: # Permite ejecutar el action manualmente con un botón
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: cluster-vrakben-lean1
+  ECS_SERVICE: task-auth-service-gugpge8m
+  TASK_DEF_FILE: .aws/task-definition-auth.json
+
+jobs:
+  test-permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Test 1 & 2 - List and Describe Tasks
+        id: describe-tasks
+        run: |
+          echo "Buscando tareas en el cluster..."
+          TASK_ARN=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} --service-name ${{ env.ECS_SERVICE }} --query 'taskArns[0]' --output text)
+          echo "Task ARN encontrada: $TASK_ARN"
+
+          echo "Obteniendo ENI de la tarea..."
+          ENI_ID=$(aws ecs describe-tasks --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text)
+          echo "ENI ID encontrada: $ENI_ID"
+          echo "eni_id=$ENI_ID" >> $GITHUB_OUTPUT
+
+      - name: Test 3 & 4 - Describe Network Interface (Obtener IP)
+        run: |
+          echo "Consultando IP privada de la ENI ${{ steps.describe-tasks.outputs.eni_id }}..."
+          IP_ADDRESS=$(aws ec2 describe-network-interfaces --network-interface-ids ${{ steps.describe-tasks.outputs.eni_id }} --query 'NetworkInterfaces[0].PrivateIpAddress' --output text)
+          echo "La IP Privada es: $IP_ADDRESS"
+
+      - name: Test 5 - Register Task Definition
+        run: |
+          echo "Probando permisos para registrar una Task Definition..."
+          aws ecs register-task-definition --cli-input-json file://${{ env.TASK_DEF_FILE }} > /dev/null
+          echo "Registro exitoso."
+
+      - name: Test 6 - Update Service
+        run: |
+          echo "Probando permisos para actualizar el servicio..."
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment > /dev/null
+          echo "Actualización de servicio permitida."
