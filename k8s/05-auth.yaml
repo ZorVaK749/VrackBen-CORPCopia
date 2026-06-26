@@ -1,0 +1,62 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-auth-server
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-auth-server
+  template:
+    metadata:
+      labels:
+        app: ms-auth-server
+    spec:
+      containers:
+        - name: auth-server
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-auth-latest
+          ports:
+            - containerPort: 8083
+          env:
+            # ---- Variables no sensibles: leyendo del ConfigMap ----
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_NAME
+            # ---- Variables sensibles: leyendo del Secret (02-secrets.yaml) ----
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: vrakben-db-secret
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vrakben-db-secret
+                  key: db-password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-auth-svc
+  namespace: vrakben
+spec:
+  selector:
+    app: ms-auth-server
+  ports:
+    - protocol: TCP
+      port: 8083
+      targetPort: 8083

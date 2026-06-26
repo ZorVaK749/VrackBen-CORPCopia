@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-catalog
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-catalog
+  template:
+    metadata:
+      labels:
+        app: ms-catalog
+    spec:
+      containers:
+        - name: catalog
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-catalog-latest
+          ports:
+            - containerPort: 8084
+          env:
+            # ---- Variables no sensibles: leyendo del ConfigMap ----
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: DB_NAME
+            - name: SPRING_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: SPRING_REDIS_HOST
+            - name: SPRING_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: SPRING_REDIS_PORT
+            # ---- Variables sensibles: leyendo del Secret (02-secrets.yaml) ----
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: vrakben-db-secret
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vrakben-db-secret
+                  key: db-password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-catalog-svc
+  namespace: vrakben
+spec:
+  selector:
+    app: ms-catalog
+  ports:
+    - protocol: TCP
+      port: 8084
+      targetPort: 8084
