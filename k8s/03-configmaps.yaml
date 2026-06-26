@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vrakben-config
+  namespace: vrakben
+data:
+  # Base de Datos
+  DB_HOST: "vrakben-db-svc"
+  DB_PORT: "5432"
+  DB_NAME: "vrakben_db"
+
+  # Redis
+  SPRING_REDIS_HOST: "vrakben-redis-svc"
+  SPRING_REDIS_PORT: "6379"
+
+  # Microservicios (Para el BFF)
+  AUTH_HOST: "ms-auth-svc"
+  AUTH_PORT: "8083"
+  CATALOG_HOST: "ms-catalog-svc"
+  CATALOG_PORT: "8084"

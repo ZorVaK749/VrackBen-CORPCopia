@@ -1,0 +1,82 @@
+---
+# ==========================================
+# BASE DE DATOS POSTGRESQL
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vrakben-db
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vrakben-db
+  template:
+    metadata:
+      labels:
+        app: vrakben-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "user_vrakben"
+            - name: POSTGRES_PASSWORD
+              value: "password_vrakben"
+            - name: POSTGRES_DB
+              value: "vrakben_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vrakben-db-svc
+  namespace: vrakben
+spec:
+  selector:
+    app: vrakben-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+
+---
+# ==========================================
+# CACHÉ REDIS
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vrakben-redis
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vrakben-redis
+  template:
+    metadata:
+      labels:
+        app: vrakben-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vrakben-redis-svc
+  namespace: vrakben
+spec:
+  selector:
+    app: vrakben-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
