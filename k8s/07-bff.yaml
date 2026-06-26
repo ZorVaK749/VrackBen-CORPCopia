@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-bff
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-bff
+  template:
+    metadata:
+      labels:
+        app: ms-bff
+    spec:
+      containers:
+        - name: bff
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-bff-latest
+          ports:
+            - containerPort: 8080
+          env:
+            # ---- Rutas internas a microservicios: leyendo del ConfigMap ----
+            - name: AUTH_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: AUTH_HOST
+            - name: AUTH_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: AUTH_PORT
+            - name: CATALOG_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: CATALOG_HOST
+            - name: CATALOG_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: vrakben-config
+                  key: CATALOG_PORT
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-bff-svc
+  namespace: vrakben
+spec:
+  selector:
+    app: ms-bff
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

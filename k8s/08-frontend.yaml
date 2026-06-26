@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: vrakben
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-frontend-latest
+          ports:
+            - containerPort: 80
+---
+# =====================================================
+# Service tipo LoadBalancer: expone el frontend a internet.
+# EKS aprovisionará automáticamente un AWS ELB con IP pública.
+# Obtén la URL pública con: kubectl get svc frontend-lb -n vrakben
+# =====================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-lb
+  namespace: vrakben
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
