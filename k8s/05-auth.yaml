@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: auth-server
-          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-auth-latest
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:auth-${IMAGE_TAG}
           ports:
             - containerPort: 8083
           env:

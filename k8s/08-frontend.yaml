@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:vrakben-frontend-latest
+          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:frontend-${IMAGE_TAG}
           ports:
             - containerPort: 80
 ---

@@ -1,0 +1,75 @@
+name: Deploy Microservices to Amazon EKS
+
+on:
+  push:
+    branches: ["main"]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER }}
+
+jobs:
+  deploy:
+    name: Build, Push and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push images to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # --- AUTH SERVER ---
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:auth-$IMAGE_TAG \
+            -f ms-auth-server/Dockerfile ./ms-auth-server
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:auth-$IMAGE_TAG
+
+          # --- CATALOG SERVICE ---
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:catalog-$IMAGE_TAG \
+            -f ms-catalog/Dockerfile ./ms-catalog
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:catalog-$IMAGE_TAG
+
+          # --- BFF / API GATEWAY ---
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:bff-$IMAGE_TAG \
+            -f bff/Dockerfile ./bff
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:bff-$IMAGE_TAG
+
+          # --- FRONTEND (Vite + Nginx, con URL del BFF embebida en build-time) ---
+          docker build \
+            --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG \
+            -f frontend/Dockerfile ./frontend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG
+
+      - name: Update Kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to EKS
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Reemplazar placeholder ${IMAGE_TAG} en los manifiestos con el SHA real del commit
+          sed -i "s|\${IMAGE_TAG}|$IMAGE_TAG|g" k8s/05-auth.yaml
+          sed -i "s|\${IMAGE_TAG}|$IMAGE_TAG|g" k8s/06-catalog.yaml
+          sed -i "s|\${IMAGE_TAG}|$IMAGE_TAG|g" k8s/07-bff.yaml
+          sed -i "s|\${IMAGE_TAG}|$IMAGE_TAG|g" k8s/08-frontend.yaml
+
+          # Aplicar todos los manifiestos en orden
+          kubectl apply -f k8s/
