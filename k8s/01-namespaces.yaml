@@ -1,0 +1,10 @@
+# Namespaces de Kubernetes para VrakBen
+# Aplicar con: kubectl apply -f k8s/01-namespaces.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vrakben
+  labels:
+    app: vrakben
+    environment: production
