@@ -430,7 +430,7 @@ export default function Home({ isDarkMode, isLoggedIn }) {
       <section className="section" style={{ backgroundColor: 'var(--bg-secondary)' }}>
         <div className="section-title">
           <div className="badge badge-blue" style={{ marginBottom: 16 }}>Quiénes somos</div>
-          <h2>Conoce a Nuestro <span style={{ color: 'var(--accent)' }}>Equipo</span></h2>
+          <h2>Conoce a Nuestro <span style={{ color: 'var(--accent)' }}>Equipo V2 PRUEBA</span></h2>
           <div className="accent-line" />
           <p style={{ marginTop: 16 }}>Los profesionales detrás de cada mantención. Comprometidos con la excelencia.</p>
         </div>
