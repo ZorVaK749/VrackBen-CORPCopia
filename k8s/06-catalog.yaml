@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: catalog
-          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:catalog-${IMAGE_TAG}
+          image: 734803061664.dkr.ecr.us-east-1.amazonaws.com/vrackben:catalog-${IMAGE_TAG}
           ports:
             - containerPort: 8084
           env:

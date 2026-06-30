@@ -1,61 +1,76 @@
-# VraKBen Lite — AWS Academy ECS Edition
+# VrakBen - Ecosistema de Microservicios en Kubernetes
 
-Esta es una versión simplificada ("Lite") del proyecto original VraKBen-CORP. Fue diseñada específicamente para ser desplegada en los laboratorios de **AWS Academy** utilizando **AWS ECS con Fargate**, adaptándose a los estrictos límites de créditos y memoria.
+Ecosistema de microservicios desarrollado para resolver necesidades empresariales complejas mediante una arquitectura distribuida y altamente escalable. El proyecto orquesta un Frontend (servido en Nginx), un Backend For Frontend (BFF / API Gateway), un Servidor de Autenticación, y múltiples servicios Core implementados en Spring Boot con persistencia en PostgreSQL y caché en Redis. Todo el ecosistema está desplegado de manera declarativa y orquestado 100% en **AWS EKS (Elastic Kubernetes Service)**.
 
-## Arquitectura Lite
+---
 
-La arquitectura original de 9 microservicios, bases de datos externas, Redis, y Eureka, ha sido reducida a solo 2 componentes completamente independientes:
+## ☁️ Arquitectura Cloud y AWS EKS
 
-1. **Frontend (`/frontend`)**
-   - Aplicación React (Vite) servida por Nginx Alpine.
-   - Enrutamiento SPA configurado.
-   - Conexión directa al backend mediante la variable `VITE_API_BACKEND_URL`.
+La infraestructura base en la nube fue construida desde cero priorizando la segmentación de red y el control absoluto del despliegue:
 
-2. **Backend (`/backend`)**
-   - Microservicio `ms-catalog` aislado.
-   - Base de datos H2 en memoria (sin necesidad de PostgreSQL externo).
-   - Dependencias de Eureka y Redis eliminadas.
-   - Datos mockeados cargados automáticamente al inicio (`data.sql`).
-   - Soporte para CORS desde el frontend.
+- **Red VPC Custom:** Se implementó una Virtual Private Cloud (VPC) propia que alberga 4 subredes (2 públicas con auto-asignación IPv4 y 2 privadas) unidas a través de un NAT Gateway, todas correctamente etiquetadas para permitir el _Service Discovery_ de Kubernetes.
+- **Registro de Contenedores:** Las imágenes de Docker para cada microservicio son versionadas y almacenadas de manera segura en **Amazon ECR (Elastic Container Registry)**.
+- **Clúster EKS (`vrackben-cluster`):** Se provisionó un clúster de Kubernetes prescindiendo del modo "Auto" para mantener un control técnico total sobre la infraestructura. La capacidad computacional está respaldada por Node Groups personalizados, lo que garantiza resiliencia y el aislamiento adecuado de los recursos.
 
-## Despliegue CI/CD (GitHub Actions)
+---
 
-El repositorio cuenta con dos flujos de trabajo (workflows) separados para el frontend y el backend, configurados para AWS Academy:
+## 🛠️ Metodología y Flujo de Trabajo
 
-- `.github/workflows/deploy-front.yml`: Se ejecuta solo cuando hay cambios en la carpeta `frontend/`.
-- `.github/workflows/deploy-back.yml`: Se ejecuta solo cuando hay cambios en la carpeta `backend/`.
+Para asegurar la calidad y el orden en el ciclo de vida del desarrollo, el equipo adopta metodologías ágiles y estándares de la industria:
 
-### Secretos de GitHub requeridos
+### 🌿 GitFlow y Estrategia de Ramas
 
-Para que los workflows funcionen correctamente, debes configurar los siguientes "Repository Secrets" en GitHub:
+- `main`: Refleja el estado de producción desplegado en AWS EKS. Solo recibe código funcional e integrado a través de Pull Requests.
+- Ramas `feature/*`: Desarrollo de nuevas funcionalidades (ej. `feature/auth-service`).
+- Ramas `fix/*` o `chore/*`: Corrección de errores urgentes o ajustes de infraestructura (ej. `chore/backup-ecs-fargate`).
 
-- `AWS_ACCESS_KEY_ID`: Tu Access Key de AWS Academy.
-- `AWS_SECRET_ACCESS_KEY`: Tu Secret Access Key.
-- `AWS_SESSION_TOKEN`: **Obligatorio** en entornos de AWS Academy.
-- `VITE_API_BACKEND_URL`: La URL pública del Application Load Balancer (ALB) de tu backend en ECS (necesario solo para el build del frontend).
+### 📝 Convenciones de Commits (Conventional Commits)
 
-_Nota sobre AWS Academy: Recuerda que las credenciales rotan frecuentemente. Deberás actualizarlas en GitHub antes de cada sesión de despliegue_
+Utilizamos prefijos estandarizados para mantener un historial semántico:
 
-## Ejecución Local con Docker
+- `feat:` Nuevas funcionalidades (ej. _feat(k8s): add auth manifests_).
+- `fix:` Solución de errores (ej. _fix(frontend): add nginx reverse proxy_).
+- `ci:` Cambios en la configuración de GitHub Actions.
+- `chore:` Tareas de mantenimiento o refactorización.
 
-Puedes probar ambos servicios localmente antes de desplegarlos:
+### 📜 Reglas del Equipo
 
-### Backend
+1. Ningún commit se realiza directamente sobre la rama `main`.
+2. Todo el código subido debe pasar por el flujo de CI/CD sin errores en la fase de `build`.
+3. Los manifiestos de Kubernetes (`k8s/`) deben mantener el uso de nombres de dominio internos (Services) en lugar de IPs estáticas.
 
-```bash
-cd backend
-docker build -t vrakben-backend:lite .
-docker run -p 8084:8084 vrakben-backend:lite
-```
+---
 
-_(El backend responderá en http://localhost:8084/api/catalog/all)_
+## 🚀 Trazabilidad, Calidad y Seguridad (CI/CD)
 
-### Frontend
+El despliegue está completamente automatizado a través de pipelines implementados en **GitHub Actions**.
 
-```bash
-cd frontend
-docker build --build-arg VITE_API_BACKEND_URL=http://localhost:8084 -t vrakben-frontend:lite .
-docker run -p 80:80 vrakben-frontend:lite
-```
+- **Pipeline Unificado:** Cada `push` a la rama `main` dispara el flujo de despliegue continuo (`.github/workflows/deploy-eks.yml`).
+- **Integración con AWS:** El pipeline se autentica de forma segura contra AWS utilizando _GitHub Secrets_ (AWS Keys, tokens) sin exponer credenciales en el código fuente.
+- **Construcción y Etiquetado Dinámico:** El pipeline compila las imágenes Docker y les asigna dinámicamente como etiqueta el SHA del commit, subiéndolas a Amazon ECR.
+- **Despliegue Declarativo:** Mediante comandos `sed`, inyecta la etiqueta dinámica en los manifiestos YAML y ejecuta comandos `kubectl apply` para aplicar la nueva topología al clúster EKS, asegurando actualizaciones limpias sin tiempo de inactividad (Zero Downtime).
 
-_(El frontend estará disponible en http://localhost)_
+---
+
+## 🔧 Resolución de Problemas (Troubleshooting)
+
+### Hito Técnico: Proxy Reverso en el Frontend (Error 405 Method Not Allowed)
+
+Durante la integración final entre el Frontend y el API Gateway en Kubernetes, nos enfrentamos a bloqueos de red donde las peticiones del navegador (como el Login) fallaban.
+
+**El Diagnóstico:** Nginx, operando en el contenedor del Frontend, estaba diseñado para servir archivos estáticos (SPA). Al recibir una petición `POST` hacia la ruta `/api/auth/login`, Nginx no sabía cómo procesarla y respondía con un error `405 Method Not Allowed`, lo cual también causaba aparentes errores de CORS en el cliente.
+
+**La Solución:** En lugar de exponer el backend directamente, implementamos un **Reverse Proxy interno**. Modificamos la configuración de Nginx (`nginx.conf`) agregando una regla `proxy_pass` en el bloque `location /api/`. Esto instruyó a Nginx a actuar como puente transparente, enrutando todo el tráfico de la API de forma privada hacia el servicio del BFF dentro de la red del clúster de Kubernetes, resolviendo instantáneamente los bloqueos de red y aumentando la seguridad general de la topología.
+
+---
+
+## 🤖 Uso de Inteligencia Artificial (Gemini)
+
+La integración de herramientas de Inteligencia Artificial (Gemini) fue fundamental como "Pair Programmer" a lo largo del ciclo de vida del proyecto:
+
+1. **Ingeniería Cloud:** Soporte activo durante el troubleshooting de infraestructura para migrar exitosamente la arquitectura hacia Amazon EKS.
+2. **Depuración (Debugging):** Asistencia analítica en la lectura de logs y depuración de comandos complejos ejecutados en AWS CloudShell.
+3. **Infraestructura como Código:** Generación y validación de la estructura base para los manifiestos YAML de Kubernetes (Deployments, Services, ConfigMaps y Secrets).
+4. **Networking:** Asistencia en el diseño e implementación de la reconfiguración avanzada de Nginx para resolver problemas de enrutamiento HTTP y CORS en un entorno aislado de clúster.
+
+---

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: bff
-          image: 955394201727.dkr.ecr.us-east-1.amazonaws.com/vrackben:bff-${IMAGE_TAG}
+          image: 734803061664.dkr.ecr.us-east-1.amazonaws.com/vrackben:bff-${IMAGE_TAG}
           ports:
             - containerPort: 8080
           env:
