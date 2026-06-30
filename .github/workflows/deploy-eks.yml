@@ -57,6 +57,17 @@ jobs:
             -f frontend/Dockerfile ./frontend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG
 
+      # --- PRUEBA DE SEGURIDAD PARA LA EVALUACIÓN (DOY0101) ---
+      - name: Escáner de vulnerabilidades (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:frontend-${{ github.sha }}'
+          format: 'table'
+          exit-code: '1' # ¡ESTO HACE QUE FALLE EL PIPELINE SI HAY ERROR!
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
       - name: Update Kubeconfig for EKS
         run: |
           aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
